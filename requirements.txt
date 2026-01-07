@@ -1,4 +1,9 @@
-langchain==0.0.342
-streamlit==1.28.2
-vllm==0.2.2
-openai==1.3.6
+streamlit>=1.39.0
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-core>=0.3.0
+openai>=1.54.0
+psutil>=5.9.0
+
+# Note: vLLM is installed separately in setup.sh due to complex dependencies
+# vllm>=0.6.0

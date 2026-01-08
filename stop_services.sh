@@ -3,42 +3,79 @@
 # Stop vLLM and Streamlit services
 # Usage: ./stop_services.sh
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PID_DIR="$SCRIPT_DIR/.pids"
+
 echo "🛑 Stopping services..."
 echo ""
 
-# Find and stop vLLM processes
-VLLM_PIDS=$(pgrep -f "vllm.entrypoints.openai.api_server" 2>/dev/null || true)
-if [ -n "$VLLM_PIDS" ]; then
-    echo "🔄 Stopping vLLM server (PIDs: $VLLM_PIDS)..."
-    echo "$VLLM_PIDS" | xargs kill -TERM 2>/dev/null || true
-    sleep 3
-    # Force kill if still running
-    REMAINING=$(echo "$VLLM_PIDS" | xargs -I {} sh -c 'kill -0 {} 2>/dev/null && echo {}' || true)
-    if [ -n "$REMAINING" ]; then
-        echo "$REMAINING" | xargs kill -KILL 2>/dev/null || true
-        echo "   Force stopped remaining processes"
-    fi
-    echo "✅ vLLM server stopped"
-else
-    echo "ℹ️  No vLLM server process found"
+STOPPED=0
+
+# Stop vLLM using PID files
+if [ -d "$PID_DIR" ]; then
+    for PID_FILE in "$PID_DIR"/vllm_*.pid; do
+        if [ -f "$PID_FILE" ]; then
+            PID=$(cat "$PID_FILE")
+            if kill -0 "$PID" 2>/dev/null; then
+                echo "🔄 Stopping vLLM server (PID: $PID)..."
+                kill -TERM "$PID" 2>/dev/null || true
+                sleep 2
+                # Force kill if still running
+                if kill -0 "$PID" 2>/dev/null; then
+                    kill -KILL "$PID" 2>/dev/null || true
+                    echo "   Force stopped"
+                fi
+                STOPPED=$((STOPPED + 1))
+            fi
+            rm -f "$PID_FILE"
+        fi
+    done
 fi
 
-# Find and stop Streamlit processes
+# Stop Streamlit using PID files
+if [ -d "$PID_DIR" ]; then
+    for PID_FILE in "$PID_DIR"/streamlit_*.pid; do
+        if [ -f "$PID_FILE" ]; then
+            PID=$(cat "$PID_FILE")
+            if kill -0 "$PID" 2>/dev/null; then
+                echo "🔄 Stopping Streamlit (PID: $PID)..."
+                kill -TERM "$PID" 2>/dev/null || true
+                sleep 2
+                # Force kill if still running
+                if kill -0 "$PID" 2>/dev/null; then
+                    kill -KILL "$PID" 2>/dev/null || true
+                    echo "   Force stopped"
+                fi
+                STOPPED=$((STOPPED + 1))
+            fi
+            rm -f "$PID_FILE"
+        fi
+    done
+fi
+
+# Fallback: Find and kill processes by name (in case PID files are missing)
+VLLM_PIDS=$(pgrep -f "vllm.entrypoints.openai.api_server" 2>/dev/null || true)
+if [ -n "$VLLM_PIDS" ]; then
+    echo "🔄 Stopping vLLM processes (by name)..."
+    echo "$VLLM_PIDS" | xargs kill -TERM 2>/dev/null || true
+    sleep 2
+    echo "$VLLM_PIDS" | xargs kill -KILL 2>/dev/null || true
+    STOPPED=$((STOPPED + 1))
+fi
+
 STREAMLIT_PIDS=$(pgrep -f "streamlit run" 2>/dev/null || true)
 if [ -n "$STREAMLIT_PIDS" ]; then
-    echo "🔄 Stopping Streamlit (PIDs: $STREAMLIT_PIDS)..."
+    echo "🔄 Stopping Streamlit processes (by name)..."
     echo "$STREAMLIT_PIDS" | xargs kill -TERM 2>/dev/null || true
     sleep 2
-    # Force kill if still running
-    REMAINING=$(echo "$STREAMLIT_PIDS" | xargs -I {} sh -c 'kill -0 {} 2>/dev/null && echo {}' || true)
-    if [ -n "$REMAINING" ]; then
-        echo "$REMAINING" | xargs kill -KILL 2>/dev/null || true
-        echo "   Force stopped remaining processes"
-    fi
-    echo "✅ Streamlit stopped"
+    echo "$STREAMLIT_PIDS" | xargs kill -KILL 2>/dev/null || true
+    STOPPED=$((STOPPED + 1))
+fi
+
+if [ $STOPPED -eq 0 ]; then
+    echo "ℹ️  No running services found"
 else
-    echo "ℹ️  No Streamlit process found"
+    echo "✅ All services stopped ($STOPPED service(s))"
 fi
 
 echo ""
-echo "✅ All services stopped"

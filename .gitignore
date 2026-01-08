@@ -1,1 +1,8 @@
 .venv
+.pids/
+.logs/
+*.log
+*.pid
+__pycache__/
+*.pyc
+*.pyo

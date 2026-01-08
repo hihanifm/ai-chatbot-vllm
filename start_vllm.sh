@@ -6,9 +6,16 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/.venv"
 
-# Activate virtual environment
-if [ -d "$VENV_DIR" ]; then
+# Determine Python executable (use venv Python if available, otherwise system Python)
+if [ -d "$VENV_DIR" ] && [ -f "$VENV_DIR/bin/python" ]; then
+    PYTHON_EXE="$VENV_DIR/bin/python"
+    # Activate virtual environment for PATH and other env vars
     source "$VENV_DIR/bin/activate"
+else
+    PYTHON_EXE="python3"
+    if ! command -v python3 &> /dev/null; then
+        PYTHON_EXE="python"
+    fi
 fi
 
 MODEL_NAME="${1:-mistralai/Mistral-7B-Instruct-v0.1}"
@@ -31,7 +38,7 @@ echo "🔌 Port: $PORT"
 echo ""
 
 # Check if vLLM is installed
-if ! python -m vllm --help &> /dev/null; then
+if ! "$PYTHON_EXE" -m vllm --help &> /dev/null; then
     echo "❌ Error: vLLM is not installed"
     echo "💡 Run setup first: ./setup.sh"
     exit 1
@@ -61,7 +68,8 @@ fi
 
 # Start vLLM server in background
 echo "🔄 Starting server in background..."
-nohup python -m vllm.entrypoints.openai.api_server \
+echo "   Using Python: $PYTHON_EXE"
+nohup "$PYTHON_EXE" -m vllm.entrypoints.openai.api_server \
     --model "$MODEL_NAME" \
     --host "$HOST" \
     --port "$PORT" \

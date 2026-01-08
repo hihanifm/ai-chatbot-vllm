@@ -6,9 +6,18 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/.venv"
 
-# Activate virtual environment
-if [ -d "$VENV_DIR" ]; then
+# Determine Python executable (use venv Python if available, otherwise system Python)
+if [ -d "$VENV_DIR" ] && [ -f "$VENV_DIR/bin/python" ]; then
+    PYTHON_EXE="$VENV_DIR/bin/python"
+    STREAMLIT_EXE="$VENV_DIR/bin/streamlit"
+    # Activate virtual environment for PATH and other env vars
     source "$VENV_DIR/bin/activate"
+else
+    PYTHON_EXE="python3"
+    STREAMLIT_EXE="streamlit"
+    if ! command -v python3 &> /dev/null; then
+        PYTHON_EXE="python"
+    fi
 fi
 
 PORT="${1:-8501}"
@@ -29,7 +38,7 @@ echo "🔌 Port: $PORT"
 echo ""
 
 # Check if Streamlit is installed
-if ! python -m streamlit --help &> /dev/null; then
+if ! "$PYTHON_EXE" -m streamlit --help &> /dev/null && ! command -v "$STREAMLIT_EXE" &> /dev/null; then
     echo "❌ Error: Streamlit is not installed"
     echo "💡 Run setup first: ./setup.sh"
     exit 1
@@ -65,11 +74,21 @@ fi
 
 # Start Streamlit in background
 echo "🔄 Starting web interface in background..."
-nohup streamlit run "$APP_FILE" \
-    --server.port "$PORT" \
-    --server.headless true \
-    --browser.gatherUsageStats false \
-    > "$LOG_FILE" 2>&1 &
+echo "   Using Python: $PYTHON_EXE"
+# Use streamlit executable if available, otherwise use python -m streamlit
+if command -v "$STREAMLIT_EXE" &> /dev/null; then
+    nohup "$STREAMLIT_EXE" run "$APP_FILE" \
+        --server.port "$PORT" \
+        --server.headless true \
+        --browser.gatherUsageStats false \
+        > "$LOG_FILE" 2>&1 &
+else
+    nohup "$PYTHON_EXE" -m streamlit run "$APP_FILE" \
+        --server.port "$PORT" \
+        --server.headless true \
+        --browser.gatherUsageStats false \
+        > "$LOG_FILE" 2>&1 &
+fi
 
 STREAMLIT_PID=$!
 

@@ -17,10 +17,24 @@ This project uses the [Mistral 7B](https://mistral.ai/news/announcing-mistral-7b
 
 - **Linux** (Ubuntu, Debian, Fedora, RHEL, or similar)
 - **Python 3.8-3.11** (Python 3.11 recommended)
-  - Ubuntu/Debian: `sudo apt install python3.11 python3.11-venv`
-  - Fedora/RHEL: `sudo dnf install python3.11`
+  - **Ubuntu/Debian:** 
+    ```bash
+    sudo apt update
+    sudo apt install python3.11 python3.11-venv python3.11-dev
+    ```
+    Or use deadsnakes PPA for more versions:
+    ```bash
+    sudo add-apt-repository ppa:deadsnakes/ppa
+    sudo apt update
+    sudo apt install python3.11 python3.11-venv python3.11-dev
+    ```
+  - **Fedora/RHEL:** `sudo dnf install python3.11`
+  - **Arch Linux:** `sudo pacman -S python311`
+  - See [INSTALL_PYTHON311.md](INSTALL_PYTHON311.md) for detailed installation instructions
 - **CUDA-capable GPU** (recommended) or CPU
 - `curl` and standard Linux utilities
+
+**Note:** If Python 3.11 is not available in your distribution's repositories, you can compile it from source. See the installation guide for details.
 
 ## Quick Start
 

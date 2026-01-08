@@ -146,6 +146,30 @@ The Streamlit app includes a sidebar with configuration options:
 - **Solution:** Use a smaller model or reduce `--max-model-len` parameter
 - For CPU-only: vLLM may be slow or have limited support
 
+**Issue:** "can't init nvml" or NVML initialization errors
+- **Note:** This warning is often non-fatal - vLLM may still work
+- **Possible causes:**
+  - NVIDIA drivers installed but NVML library not accessible
+  - Permissions issues with GPU access
+  - Driver/kernel mismatch
+- **Solutions:**
+  ```bash
+  # Check GPU is accessible
+  nvidia-smi
+  
+  # Check CUDA availability
+  python -c "import torch; print(torch.cuda.is_available())"
+  
+  # Check driver status
+  lsmod | grep nvidia
+  
+  # If needed, reinstall NVIDIA drivers
+  # For Ubuntu/Debian:
+  sudo apt update
+  sudo apt install --reinstall nvidia-driver-XXX  # Replace XXX with your driver version
+  ```
+- **If vLLM still starts:** The NVML error is usually just a warning about GPU monitoring, not a fatal error. The server should still work.
+
 **Issue:** Port already in use
 - **Solution:** Stop existing service or use a different port
   ```bash

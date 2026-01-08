@@ -6,18 +6,30 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/.venv"
 
-# Determine Python executable (use venv Python if available, otherwise system Python)
+# Determine Python executable (use venv Python if available, otherwise find compatible Python)
 if [ -d "$VENV_DIR" ] && [ -f "$VENV_DIR/bin/python" ]; then
     PYTHON_EXE="$VENV_DIR/bin/python"
     STREAMLIT_EXE="$VENV_DIR/bin/streamlit"
     # Activate virtual environment for PATH and other env vars
     source "$VENV_DIR/bin/activate"
 else
-    PYTHON_EXE="python3"
-    STREAMLIT_EXE="streamlit"
-    if ! command -v python3 &> /dev/null; then
-        PYTHON_EXE="python"
+    # Try to find a compatible Python version (for consistency with vLLM requirements)
+    PYTHON_EXE=""
+    for pyver in 3.11 3.10 3.9 3.8; do
+        if command -v python${pyver} &> /dev/null; then
+            PYTHON_EXE="python${pyver}"
+            break
+        fi
+    done
+    
+    if [ -z "$PYTHON_EXE" ]; then
+        PYTHON_EXE="python3"
+        if ! command -v python3 &> /dev/null; then
+            PYTHON_EXE="python"
+        fi
     fi
+    
+    STREAMLIT_EXE="streamlit"
 fi
 
 PORT="${1:-8501}"

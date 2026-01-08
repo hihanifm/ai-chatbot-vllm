@@ -38,6 +38,22 @@ This project uses the [Mistral 7B](https://mistral.ai/news/announcing-mistral-7b
 
 ## Quick Start
 
+### 0. Validate GPU (Optional but recommended)
+
+Before setup, validate that your GPU is properly configured:
+
+```bash
+./check_gpu.sh
+```
+
+This will check:
+- NVIDIA GPU hardware detection
+- Driver installation and version
+- CUDA toolkit availability
+- PyTorch CUDA support
+- vLLM GPU compatibility
+- GPU compute capability
+
 ### 1. Setup (One-time installation)
 
 Run the setup script to automatically create a virtual environment and install all dependencies:
@@ -104,6 +120,7 @@ Or manually stop with Ctrl+C in each terminal.
 | Script | Description |
 |--------|-------------|
 | `setup.sh` | **First-time setup** - Create venv and install all dependencies |
+| `check_gpu.sh` | **GPU validation** - Check GPU, CUDA, PyTorch, and vLLM GPU support |
 | `start_all.sh` | Start both vLLM server and Streamlit app |
 | `start_vllm.sh` | Start only the vLLM server |
 | `start_streamlit.sh` | Start only the Streamlit app |

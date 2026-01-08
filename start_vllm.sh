@@ -6,15 +6,45 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/.venv"
 
-# Determine Python executable (use venv Python if available, otherwise system Python)
+# Determine Python executable (use venv Python if available, otherwise find compatible Python)
 if [ -d "$VENV_DIR" ] && [ -f "$VENV_DIR/bin/python" ]; then
     PYTHON_EXE="$VENV_DIR/bin/python"
+    # Check if venv Python is compatible
+    PYTHON_VERSION=$("$PYTHON_EXE" --version 2>&1 | cut -d' ' -f2)
+    PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d'.' -f2)
+    
+    if [ "$PYTHON_MINOR" -ge 12 ]; then
+        echo "❌ Error: Virtual environment uses Python $PYTHON_VERSION (not compatible with vLLM)"
+        echo "   vLLM supports Python 3.8-3.11 only"
+        echo ""
+        echo "💡 Solution: Recreate venv with compatible Python:"
+        # Try to find compatible Python
+        for pyver in 3.11 3.10 3.9 3.8; do
+            if command -v python${pyver} &> /dev/null; then
+                echo "   rm -rf .venv && python${pyver} -m venv .venv && ./setup.sh"
+                break
+            fi
+        done
+        exit 1
+    fi
+    
     # Activate virtual environment for PATH and other env vars
     source "$VENV_DIR/bin/activate"
 else
-    PYTHON_EXE="python3"
-    if ! command -v python3 &> /dev/null; then
-        PYTHON_EXE="python"
+    # Try to find a compatible Python version
+    PYTHON_EXE=""
+    for pyver in 3.11 3.10 3.9 3.8; do
+        if command -v python${pyver} &> /dev/null; then
+            PYTHON_EXE="python${pyver}"
+            break
+        fi
+    done
+    
+    if [ -z "$PYTHON_EXE" ]; then
+        PYTHON_EXE="python3"
+        if ! command -v python3 &> /dev/null; then
+            PYTHON_EXE="python"
+        fi
     fi
 fi
 

@@ -12,29 +12,58 @@ echo "🔧 Setting up vLLM + Streamlit Chatbot"
 echo "======================================"
 echo ""
 
-# Check Python version
+# Check Python version - prefer Python 3.11 or compatible version
 echo "🐍 Checking Python version..."
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Error: Python 3 is not installed"
-    echo "💡 Install Python 3.8-3.11 with your package manager:"
-    echo "   Ubuntu/Debian: sudo apt install python3.11 python3.11-venv"
-    echo "   Fedora/RHEL: sudo dnf install python3.11"
-    exit 1
+
+# Try to find a compatible Python version (3.8-3.11)
+PYTHON_EXE=""
+for pyver in 3.11 3.10 3.9 3.8; do
+    if command -v python${pyver} &> /dev/null; then
+        PYTHON_EXE="python${pyver}"
+        PYTHON_VERSION=$($PYTHON_EXE --version 2>&1 | cut -d' ' -f2)
+        echo "✅ Found compatible Python: $PYTHON_VERSION ($PYTHON_EXE)"
+        break
+    fi
+done
+
+# Fallback to python3 if no specific version found
+if [ -z "$PYTHON_EXE" ]; then
+    if ! command -v python3 &> /dev/null; then
+        echo "❌ Error: Python 3 is not installed"
+        echo "💡 Install Python 3.8-3.11 with your package manager:"
+        echo "   Ubuntu/Debian: sudo apt install python3.11 python3.11-venv"
+        echo "   Fedora/RHEL: sudo dnf install python3.11"
+        echo "   macOS: brew install python@3.11"
+        exit 1
+    fi
+    PYTHON_EXE="python3"
+    PYTHON_VERSION=$(python3 --version | cut -d' ' -f2)
+    echo "⚠️  Using default python3: $PYTHON_VERSION"
 fi
 
-PYTHON_VERSION=$(python3 --version | cut -d' ' -f2)
 PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d'.' -f1)
 PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d'.' -f2)
-
-echo "✅ Found Python $PYTHON_VERSION"
 
 # Check Python version compatibility
 if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 12 ]; then
     echo ""
-    echo "⚠️  Warning: Python $PYTHON_VERSION may have compatibility issues with vLLM"
-    echo "   vLLM officially supports Python 3.8-3.11"
+    echo "❌ Error: Python $PYTHON_VERSION is not supported by vLLM"
+    echo "   vLLM officially supports Python 3.8-3.11 only"
     echo ""
-    echo "💡 Recommended: Use Python 3.11 for best compatibility"
+    echo "💡 Please install Python 3.11:"
+    echo "   Ubuntu/Debian: sudo apt install python3.11 python3.11-venv"
+    echo "   Fedora/RHEL: sudo dnf install python3.11"
+    echo "   macOS: brew install python@3.11"
+    echo ""
+    echo "   Then recreate venv: rm -rf .venv && python3.11 -m venv .venv"
+    echo "   And run this script again."
+    exit 1
+elif [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 8 ] && [ "$PYTHON_MINOR" -le 11 ]; then
+    echo "✅ Python version is compatible with vLLM"
+    echo ""
+else
+    echo "⚠️  Warning: Python $PYTHON_VERSION may not be supported"
+    echo "   vLLM supports Python 3.8-3.11"
     echo ""
     read -p "Continue anyway? (y/n) " -n 1 -r
     echo
@@ -42,21 +71,32 @@ if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 12 ]; then
         exit 1
     fi
     echo ""
-elif [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 8 ] && [ "$PYTHON_MINOR" -le 11 ]; then
-    echo "✅ Python version is compatible with vLLM"
-    echo ""
-else
-    echo "⚠️  Warning: Python $PYTHON_VERSION may not be supported"
-    echo ""
 fi
 
-# Create virtual environment
+# Create virtual environment with the correct Python version
 if [ ! -d "$VENV_DIR" ]; then
-    echo "📦 Creating virtual environment..."
-    python3 -m venv "$VENV_DIR"
+    echo "📦 Creating virtual environment with $PYTHON_EXE..."
+    $PYTHON_EXE -m venv "$VENV_DIR"
     echo "✅ Virtual environment created"
 else
     echo "✅ Virtual environment already exists"
+    # Check if existing venv uses compatible Python
+    if [ -f "$VENV_DIR/bin/python" ]; then
+        VENV_PYTHON_VERSION=$("$VENV_DIR/bin/python" --version 2>&1 | cut -d' ' -f2)
+        VENV_PYTHON_MINOR=$(echo $VENV_PYTHON_VERSION | cut -d'.' -f2)
+        if [ "$VENV_PYTHON_MINOR" -ge 12 ]; then
+            echo ""
+            echo "⚠️  Warning: Existing venv uses Python $VENV_PYTHON_VERSION (not compatible with vLLM)"
+            echo "   Recommended: Remove and recreate venv:"
+            echo "   rm -rf .venv && $PYTHON_EXE -m venv .venv"
+            echo ""
+            read -p "Continue anyway? (y/n) " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
+        fi
+    fi
 fi
 echo ""
 
